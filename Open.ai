@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Variables
+TENANT_ID="scribie.ai"
+CLIENT_ID="prembgs"
+CLIENT_SECRET="your-client-secret"
+SUBSCRIPTION_ID="your-subscription-id"
+RESOURCE_GROUP="myResourceGroup"
+APP_SERVICE_PLAN="myAppServicePlan"
+WEB_APP="myWebApp$(date +%s)" # Adding a timestamp to make the name unique
+LOCATION="bangalore"
+
+# Get an access token
+TOKEN=$(curl -X POST -H "Content-Type: application/x-www-form-urlencoded" \
+-d "grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=$CLIENT_SECRET&resource=https%3A%2F%2Fmanagement.azure.com%2F" \
+https://login.microsoftonline.com/$TENANT_ID/oauth2/token | jq -r '.access_token')
+
+# Create a resource group
+curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+-d "{\"location\":\"$LOCATION\"}" \
+https://management.azure.com/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP?api-version=2021-04-01
+
+# Create an App Service plan
+curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+-d "{\"location\":\"$LOCATION\",\"sku\":{\"name\":\"F1\",\"tier\":\"Free\"}}" \
+https://management.azure.com/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Web/serverfarms/$APP_SERVICE_PLAN?api-version=2021-02-01
+
+# Create a Web App
+curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+-d "{\"location\":\"$LOCATION\",\"properties\":{\"serverFarmId\":\"/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Web/serverfarms/$APP_SERVICE_PLAN\"}}" \
+https://management.azure.com/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Web/sites/$WEB_APP?api-version=2021-02-01
+
+echo "Web App $WEB_APP created successfully."
